@@ -8,11 +8,14 @@ var request = require('request');
 var arguments = process.argv.slice(2);
 var hlsStream = arguments[0] || 'http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8';
 var name=arguments[1] || 'ABC';
-var baseDir =  name + 'Stream/';
-if ( !fs.existsSync(name + 'Stream')) {
-	fs.mkdirSync( name + 'Stream' );
+var baseDir =  'public/' + name + 'Stream/';
+if ( !fs.existsSync('public')){
+	fs.mkdirSync( 'public' );
 }
-var masterFile = fs.createWriteStream(name+ 'Stream/'+ 'master.m3u8');
+if ( !fs.existsSync(baseDir) ) {
+	fs.mkdirSync( baseDir );
+}
+var masterFile = fs.createWriteStream(baseDir+ 'master.m3u8');
 
 function readMaster(){
 	var deferred = q.defer();
@@ -33,7 +36,7 @@ function readMaster(){
 function parseMaster(){
 	var defferred = q.defer();
 	var bw = {};
-	var readFile = fs.readFile(name+ 'Stream/'+ 'master.m3u8','utf8',function(err,data){
+	var readFile = fs.readFile(baseDir+ 'master.m3u8','utf8',function(err,data){
 		console.log(data);
 		var lines = data.split('\n');
 		for (var i=0;i<lines.length;i++){
@@ -50,7 +53,7 @@ function parseMaster(){
 }
 
 function downloadSegments(bwObj){
-	var baseDir =  name + 'Stream/';
+
 	if ( !fs.existsSync(name + 'Stream')) {
 		fs.mkdirSync( name + 'Stream' );
 	}
@@ -91,12 +94,12 @@ function monitorAndDownload(url,path){
 						if (!fs.existsSync(path + fileName[1])) {
 							fs.appendFileSync(path +'playlist.m3u8',line + "\n");
 							fs.appendFileSync(path +'playlist.m3u8',fileName[1] + "\n");
-							var url = lines[i+1];
-							if (url.indexOf("http") == -1){
-								 url = hlsStream.replace(/([\w,\s-]+\.m3u8)/ig,url);
+							var tsUrl = lines[i+1];
+							if (tsUrl.indexOf("http") == -1){
+								tsUrl = url.replace(/([\w,\s-]+\.m3u8)/ig,tsUrl);
 							}
 							request
-								.get( url )
+								.get( tsUrl )
 								.on( 'error' , function ( err ) {
 									console.log( err )
 								} )
