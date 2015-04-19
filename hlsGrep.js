@@ -86,6 +86,14 @@ function monitorAndDownload(url,path){
 			var lines = body.split('\n');
 			for (var i=0;i<lines.length;i++){
 				var line= lines[i];
+				var keyMatch = line.match(/#EXT-X-KEY:.*URI="(.*)"/);
+				if (keyMatch && keyMatch.length > 1){
+					request.get(url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]) ).on( 'error' , function ( err ) {
+						console.log( err )
+					} )
+						.pipe( fs.createWriteStream( path +  keyMatch[1] ) );
+				}
+
 				var tsLength = line.match(/#EXTINF:([0-9\.]*)/);
 				if (tsLength && tsLength.length>1){
 					passheader = true;

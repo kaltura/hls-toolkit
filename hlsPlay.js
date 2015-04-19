@@ -9,12 +9,16 @@ var streamFolder = 'public';
 var startTime = Date.now();
 var diffTime = 20;
 var windowSize = 5;
+var inProgress = false;
+var exec = null;
 if ( !fs.existsSync(streamFolder)){
 	console.error("Can't find public folder");
 	process.exit(1);
 }
 
 app.use(express.static(__dirname + '/' + streamFolder));
+app.use(express.static(__dirname + '/Site' ));
+
 function parsePlaylist(data,folder){
 	var resultObject = [];
 	var lines = data.split('\n');
@@ -32,8 +36,9 @@ function scanForStreams(){
 	var resultObj = {};
 	var streams = fs.readdirSync(streamFolder);
 	streams.forEach(function(item,index){
-		resultObj[item] = [];
+
 		if (fs.lstatSync(streamFolder +'/' + item ).isDirectory()) {
+			resultObj[item] = [];
 			var bitRates = fs.readdirSync( streamFolder + '/' + item );
 			bitRates.forEach( function ( bitem , bindex ) {
 				if (fs.lstatSync(streamFolder + '/' + item + '/' + bitem ).isDirectory()) {
@@ -124,6 +129,43 @@ app.get('/:stream/bitrate_:rate.m3u8',function(req, res, next){
 
 	res.send(response);
 
+});
+
+app.get('/list' , function(req, res, next){
+	streams = scanForStreams();
+	var result = [];
+	for (var i in streams){
+		result.push({name:i,url:"/"+i+"/play.m3u8"});
+	}
+	res.send(JSON.stringify(result));
+});
+
+app.get('/add/:name/:url/:isLive', function(req,res,next){
+	console.log(req.url);
+	if (inProgress){
+		res.send("Error - Wait for the current capture to end :-)");
+		return;
+	}
+	inProgress = true;
+	var streamName = req.params["name"];
+	var streamURL = decodeURIComponent(req.params["url"]);
+	var live = req.params["isLive"];
+	exec = require('child_process').exec;
+	exec('node hlsGrep '+streamURL +' ' + streamName, function callback(error, stdout, stderr){
+		inProgress = false;
+		console.log(stdout);
+	});
+});
+
+app.get('/progress' , function(req,res,next){
+	res.send(inProgress);
+});
+
+app.get('/kill' , function(req,res,next){
+	if (exec) {
+		exec.kill( 'kill' );
+		inProgress = false;
+	}
 });
 
 app.use(function(req, res, next) {
