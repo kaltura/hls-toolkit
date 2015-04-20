@@ -57,18 +57,31 @@ function downloadSegments(bwObj){
 	if ( !fs.existsSync(name + 'Stream')) {
 		fs.mkdirSync( name + 'Stream' );
 	}
+	var jobs = [];
     for  (var i in bwObj){
 	    var path = baseDir + 'bitRate_'+i +'/';
 	    if ( !fs.existsSync(path)) {
 		    fs.mkdirSync( path);
 	    }
-	    monitorAndDownload(bwObj[i],path )
+	    jobs.push({arg1:bwObj[i],arg2:path});
+	   // monitorAndDownload(bwObj[i],path );
 	   // break;
     }
+	var x = jobs.pop();
+	var worker = function(){
+		x = jobs.pop();
+		return monitorAndDownload( x.arg1, x.arg2 );
+	};
+	var q = monitorAndDownload( x.arg1, x.arg2 );
+	for (var i=0;i< jobs.length ; i++){
+		q = q.then(worker);
+	}
 }
 
 function monitorAndDownload(url,path){
-
+	var deferred = q.defer();
+	var numOfFiles = 0;
+	var timeout =  30;
 	if (url.indexOf("http") == -1){
 		url = hlsStream.replace(/([\w,\s-]+\.m3u8)/ig,url);
 	}
@@ -85,6 +98,7 @@ function monitorAndDownload(url,path){
 			var tsHash = {};
 			var lines = body.split('\n');
 			for (var i=0;i<lines.length;i++){
+
 				var line= lines[i];
 				var keyMatch = line.match(/#EXT-X-KEY:.*URI="(.*)"/);
 				if (keyMatch && keyMatch.length > 1){
@@ -106,11 +120,15 @@ function monitorAndDownload(url,path){
 							if (tsUrl.indexOf("http") == -1){
 								tsUrl = url.replace(/([\w,\s-]+\.m3u8)/ig,tsUrl);
 							}
+							numOfFiles++;
 							request
 								.get( tsUrl )
 								.on( 'error' , function ( err ) {
 									console.log( err )
 								} )
+								.on('response' ,function (res){
+									numOfFiles--;
+								})
 								.pipe( fs.createWriteStream( path + fileName[1] ) );
 						}
 					}
@@ -119,10 +137,22 @@ function monitorAndDownload(url,path){
 						fs.appendFileSync( path + 'playlist.m3u8' , line + "\n" );
 					}
 				}
-
 			}
 		}
 	})
+	var sleep = function(){setTimeout(function() {
+		timeout --;
+		console.log("num of fies:" + numOfFiles + "  " + path);
+		if (numOfFiles > 0 && timeout > 0){
+			console.log("Sleeping for 5 sec");
+			sleep();
+		}  else {
+			deferred.resolve(numOfFiles);
+		}
+
+	}, 5000);};
+	sleep();
+	return deferred.promise;
 }
 
 readMaster()

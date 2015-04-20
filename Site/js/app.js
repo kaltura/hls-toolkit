@@ -4,6 +4,7 @@
 angular.module('hlsManager', [])
 	.controller('hlsManagerController', function($http) {
 		var hlsManager = this;
+		hlsManager.progress = true;
 		hlsManager.reset = function(){
 			$http.get('/reset' );
 		};
@@ -38,5 +39,6 @@ angular.module('hlsManager', [])
 			} );
 		};
 		getStreams();
+		hlsManager.isProgress();
 	});
 
