@@ -12,6 +12,7 @@ var windowSize = 5;
 var numOfLiveSameple = 10;
 var inProgress = false;
 var exec = null;
+var isVOD = false;
 var logs = '';
 if ( !fs.existsSync(streamFolder)){
 	console.error("Can't find public folder");
@@ -132,12 +133,14 @@ app.get('/:stream/bitrate_:rate.m3u8',function(req, res, next){
 			var tsLength = currentLine.match(/#EXTINF:([0-9\.]*)/);
 			if (tsLength && tsLength.length>1) {
 				timeTillNow += parseFloat( tsLength[1] );
-				if (timeTillNow  < diff + diffTime ){
+				if (timeTillNow  < diff + diffTime || isVOD ){
 					response += currentLine;
 				}
 			}
 		}
 	}
+	if (isVOD)
+		response += '#EXT-X-ENDLIST';
 	res.contentType('application/vnd.apple.mpegurl');
 
 	res.send(response);
@@ -200,6 +203,20 @@ app.get('/kill' , function(req,res,next){
 app.get('/logs', function(req,res,next){
 	 res.send(logs);
 	logs = '';
+});
+
+app.get('/playVOD', function(req,res,next){
+	isVOD = true;
+	res.send( true );
+});
+
+app.get('/playLive', function(req,res,next){
+	isVOD = false;
+	res.send( true );
+});
+
+app.get('/playMode', function(req,res,next) {
+	res.send( isVOD );
 });
 
 app.use(function(req, res, next) {

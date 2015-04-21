@@ -44,6 +44,8 @@
     <br/>
      <button type="button" class="btn btn-danger" ng-click="hlsManager.reset()">Reset Stream times (for live)</button>
      <button type="button" class="btn btn-danger" ng-click="hlsManager.kill()">Kill capture procces</button>
+    <button type=button" class="btn" ng-click="hlsManager.playVOD()">Play VOD</button>
+    <button type=button" class="btn" ng-click="hlsManager.playLive()">Play Live</button>
     <table class="table table-hover" >
         <tr>
             <th>Stream Name</th>
@@ -56,6 +58,9 @@
          <td> {{stream.numOfBitrate}}</td>
      </tr>
     </table>
+
+
+
     <br/>
     <br/>
     <button type="button" class="btn btn-danger" ng-click="hlsManager.clearLogs()">Clear log</button>

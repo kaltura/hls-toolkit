@@ -38,6 +38,12 @@ angular.module('hlsManager', [])
 			{name: "Stream1" , url: "http://xxxx/1.m3u8"} ,
 			{name: "Stream2" , url: "http://xxxx/2.m3u8"}
 		];
+		hlsManager.playVOD = function(){
+			$http.get('/playVOD') ;
+		};
+		hlsManager.playLive = function(){
+			$http.get('/playLive') ;
+		};
 		var getStreams = function() {
 			$http.get( '/list' ).success( function ( data ) {
 				hlsManager.streams = data;
