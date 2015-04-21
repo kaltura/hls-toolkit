@@ -9,11 +9,24 @@ var streamFolder = 'public';
 var startTime = Date.now();
 var diffTime = 20;
 var windowSize = 5;
+var numOfLiveSameple = 10;
 var inProgress = false;
 var exec = null;
+var logs = '';
 if ( !fs.existsSync(streamFolder)){
 	console.error("Can't find public folder");
 	process.exit(1);
+}
+
+function log(text){
+	var now = new Date().getTime();
+	console.log(now + "HLSPlay ---- " , text);
+	if ( typeof text != 'string') {
+		try{
+			text = JSON.stringify(text);
+		} catch(e){}
+	}
+	logs = now + "HLSPlay ---- " + text + "\\\n" + logs;
 }
 
 app.use(express.static(__dirname + '/' + streamFolder));
@@ -55,7 +68,7 @@ function scanForStreams(){
 				}
 			} );
 		}
-		console.log(resultObj);
+		log(resultObj);
 	});
 	return resultObj;
 }
@@ -66,7 +79,7 @@ app.get('/reset',function(req, res, next){
 	res.send('Time reset');
 });
 app.get('/:stream/play.m3u8', function(req, res, next) {
-	console.log(req.url);
+	log(req.url);
 	var streamName =  req.params['stream'];
 	if ( !streamName && !streams[streamName] ) {
 		next();
@@ -93,7 +106,7 @@ app.get('/:stream/play.m3u8', function(req, res, next) {
 });
 
 app.get('/:stream/bitrate_:rate.m3u8',function(req, res, next){
-	console.log(req.url);
+	log(req.url);
 	var response = '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-TARGETDURATION:13\n#EXT-X-MEDIA-SEQUENCE:0\n';
 	var streamName =  req.params['stream'];
 	var bitRate = req.params['rate'];
@@ -135,13 +148,13 @@ app.get('/list' , function(req, res, next){
 	streams = scanForStreams();
 	var result = [];
 	for (var i in streams){
-		result.push({name:i,url:"/"+i+"/play.m3u8"});
+		result.push({name:i,url:"/"+i+"/play.m3u8",numOfBitrate:streams[i].length});
 	}
 	res.send(JSON.stringify(result));
 });
 
 app.get('/add/:name/:url/:isLive', function(req,res,next){
-	console.log(req.url);
+	log(req.url);
 	if (inProgress){
 		res.send("Error - Wait for the current capture to end :-)");
 		return;
@@ -150,11 +163,27 @@ app.get('/add/:name/:url/:isLive', function(req,res,next){
 	var streamName = req.params["name"];
 	var streamURL = decodeURIComponent(req.params["url"]);
 	var live = req.params["isLive"];
-	exec = require('child_process').exec;
-	exec('node hlsGrep '+streamURL +' ' + streamName, function callback(error, stdout, stderr){
-		inProgress = false;
-		console.log(stdout);
-	});
+	var samepleCount = req.params["SampleCount"];
+	if (live === "true"){
+		numOfLiveSameple = 10;
+		if (samepleCount && parseInt(samepleCount)) {
+			numOfLiveSameple =  parseInt(samepleCount);
+		}
+	}
+	var executeGrep = function() {
+		exec = require( 'child_process' ).exec;
+		exec( 'node hlsGrep ' + streamURL + ' ' + streamName , function callback( error , stdout , stderr ) {
+			if (live === "true" && numOfLiveSameple > 0){
+				log("Grepping live content " + numOfLiveSameple +" to go");
+				numOfLiveSameple--;
+				executeGrep();
+				return;
+			}
+			inProgress = false;
+			log( stdout );
+		} );
+	};
+	executeGrep();
 });
 
 app.get('/progress' , function(req,res,next){
@@ -166,6 +195,11 @@ app.get('/kill' , function(req,res,next){
 		exec.kill( 'kill' );
 		inProgress = false;
 	}
+});
+
+app.get('/logs', function(req,res,next){
+	 res.send(logs);
+	logs = '';
 });
 
 app.use(function(req, res, next) {

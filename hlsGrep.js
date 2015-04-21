@@ -17,19 +17,18 @@ if ( !fs.existsSync(baseDir) ) {
 }
 var masterFile = fs.createWriteStream(baseDir+ 'master.m3u8');
 
+function log(text){
+	var now = new Date().getTime();
+	console.log(now + "HLSGrep ---- " , text);
+}
+
 function readMaster(){
 	var deferred = q.defer();
-	var request = http.get(hlsStream, function(res) {
-		res.on('data', function(data) {
-			masterFile.write(data);
-		}).on('end', function() {
-			masterFile.end();
-			deferred.resolve();
+	request.get(hlsStream, function (error, response, body) {
+				console.log("Master downloaded.");
+				deferred.resolve();
+			}).pipe(masterFile);
 
-		});
-
-
-	});
 	return deferred.promise;
 }
 
@@ -37,7 +36,7 @@ function parseMaster(){
 	var defferred = q.defer();
 	var bw = {};
 	var readFile = fs.readFile(baseDir+ 'master.m3u8','utf8',function(err,data){
-		console.log(data);
+		log(data);
 		var lines = data.split('\n');
 		for (var i=0;i<lines.length;i++){
 			var line = lines[i];
@@ -72,16 +71,18 @@ function downloadSegments(bwObj){
 		x = jobs.pop();
 		return monitorAndDownload( x.arg1, x.arg2 );
 	};
-	var q = monitorAndDownload( x.arg1, x.arg2 );
+	var qq = monitorAndDownload( x.arg1, x.arg2 );
 	for (var i=0;i< jobs.length ; i++){
-		q = q.then(worker);
+		qq = qq.then(worker);
 	}
 }
 
 function monitorAndDownload(url,path){
+	q = require('q');
 	var deferred = q.defer();
 	var numOfFiles = 0;
 	var timeout =  30;
+	var queue = [];
 	if (url.indexOf("http") == -1){
 		url = hlsStream.replace(/([\w,\s-]+\.m3u8)/ig,url);
 	}
@@ -102,8 +103,9 @@ function monitorAndDownload(url,path){
 				var line= lines[i];
 				var keyMatch = line.match(/#EXT-X-KEY:.*URI="(.*)"/);
 				if (keyMatch && keyMatch.length > 1){
+
 					request.get(url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]) ).on( 'error' , function ( err ) {
-						console.log( err )
+						log( err )
 					} )
 						.pipe( fs.createWriteStream( path +  keyMatch[1] ) );
 				}
@@ -121,15 +123,7 @@ function monitorAndDownload(url,path){
 								tsUrl = url.replace(/([\w,\s-]+\.m3u8)/ig,tsUrl);
 							}
 							numOfFiles++;
-							request
-								.get( tsUrl )
-								.on( 'error' , function ( err ) {
-									console.log( err )
-								} )
-								.on('response' ,function (res){
-									numOfFiles--;
-								})
-								.pipe( fs.createWriteStream( path + fileName[1] ) );
+							queue.push({url:tsUrl,path:path+fileName[1]});
 						}
 					}
 				}else{
@@ -138,13 +132,41 @@ function monitorAndDownload(url,path){
 					}
 				}
 			}
+
+			var worker = function(){
+				q = require('q');
+				var deferred2 = q.defer();
+				log("Grabbing file:" + queue.length);
+				if (queue.length == 0 ){
+					deferred2.resolve();
+
+				}         else {
+					var item = queue.pop();
+					request.get( item.url )
+						.on( 'error' , function ( err ) {
+							deferred2.reject();
+							log( err )
+						} )
+						.on( 'response' , function ( res ) {
+							numOfFiles--;
+							deferred2.resolve();
+						} )
+						.pipe( fs.createWriteStream( item.path ) );
+				}
+				return deferred2.promise;
+			};
+			var qqq = worker();
+			for (var i=0;i<queue.length;i++){
+				qqq = qqq.allSettled([worker(),worker(),worker(),worker(),worker()]);;
+			}
 		}
-	})
+	});
+
 	var sleep = function(){setTimeout(function() {
 		timeout --;
-		console.log("num of fies:" + numOfFiles + "  " + path);
+		log("num of fies:" + numOfFiles + "  " + path);
 		if (numOfFiles > 0 && timeout > 0){
-			console.log("Sleeping for 5 sec");
+			log("Sleeping for 5 sec");
 			sleep();
 		}  else {
 			deferred.resolve(numOfFiles);
