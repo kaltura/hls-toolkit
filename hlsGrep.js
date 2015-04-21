@@ -17,19 +17,18 @@ if ( !fs.existsSync(baseDir) ) {
 }
 var masterFile = fs.createWriteStream(baseDir+ 'master.m3u8');
 
+function log(text){
+	var now = new Date().getTime();
+	console.log(now + "HLSGrep ---- " , text);
+}
+
 function readMaster(){
 	var deferred = q.defer();
-	var request = http.get(hlsStream, function(res) {
-		res.on('data', function(data) {
-			masterFile.write(data);
-		}).on('end', function() {
-			masterFile.end();
-			deferred.resolve();
+	request.get(hlsStream, function (error, response, body) {
+				console.log("Master downloaded.");
+				deferred.resolve();
+			}).pipe(masterFile);
 
-		});
-
-
-	});
 	return deferred.promise;
 }
 
@@ -37,7 +36,7 @@ function parseMaster(){
 	var defferred = q.defer();
 	var bw = {};
 	var readFile = fs.readFile(baseDir+ 'master.m3u8','utf8',function(err,data){
-		console.log(data);
+		log(data);
 		var lines = data.split('\n');
 		for (var i=0;i<lines.length;i++){
 			var line = lines[i];
@@ -57,18 +56,33 @@ function downloadSegments(bwObj){
 	if ( !fs.existsSync(name + 'Stream')) {
 		fs.mkdirSync( name + 'Stream' );
 	}
+	var jobs = [];
     for  (var i in bwObj){
 	    var path = baseDir + 'bitRate_'+i +'/';
 	    if ( !fs.existsSync(path)) {
 		    fs.mkdirSync( path);
 	    }
-	    monitorAndDownload(bwObj[i],path )
+	    jobs.push({arg1:bwObj[i],arg2:path});
+	   // monitorAndDownload(bwObj[i],path );
 	   // break;
     }
+	var x = jobs.pop();
+	var worker = function(){
+		x = jobs.pop();
+		return monitorAndDownload( x.arg1, x.arg2 );
+	};
+	var qq = monitorAndDownload( x.arg1, x.arg2 );
+	for (var i=0;i< jobs.length ; i++){
+		qq = qq.then(worker);
+	}
 }
 
 function monitorAndDownload(url,path){
-
+	q = require('q');
+	var deferred = q.defer();
+	var numOfFiles = 0;
+	var timeout =  30;
+	var queue = [];
 	if (url.indexOf("http") == -1){
 		url = hlsStream.replace(/([\w,\s-]+\.m3u8)/ig,url);
 	}
@@ -85,7 +99,17 @@ function monitorAndDownload(url,path){
 			var tsHash = {};
 			var lines = body.split('\n');
 			for (var i=0;i<lines.length;i++){
+
 				var line= lines[i];
+				var keyMatch = line.match(/#EXT-X-KEY:.*URI="(.*)"/);
+				if (keyMatch && keyMatch.length > 1){
+
+					request.get(url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]) ).on( 'error' , function ( err ) {
+						log( err )
+					} )
+						.pipe( fs.createWriteStream( path +  keyMatch[1] ) );
+				}
+
 				var tsLength = line.match(/#EXTINF:([0-9\.]*)/);
 				if (tsLength && tsLength.length>1){
 					passheader = true;
@@ -98,12 +122,8 @@ function monitorAndDownload(url,path){
 							if (tsUrl.indexOf("http") == -1){
 								tsUrl = url.replace(/([\w,\s-]+\.m3u8)/ig,tsUrl);
 							}
-							request
-								.get( tsUrl )
-								.on( 'error' , function ( err ) {
-									console.log( err )
-								} )
-								.pipe( fs.createWriteStream( path + fileName[1] ) );
+							numOfFiles++;
+							queue.push({url:tsUrl,path:path+fileName[1]});
 						}
 					}
 				}else{
@@ -111,10 +131,50 @@ function monitorAndDownload(url,path){
 						fs.appendFileSync( path + 'playlist.m3u8' , line + "\n" );
 					}
 				}
+			}
 
+			var worker = function(){
+				q = require('q');
+				var deferred2 = q.defer();
+				log("Grabbing file:" + queue.length);
+				if (queue.length == 0 ){
+					deferred2.resolve();
+
+				}         else {
+					var item = queue.pop();
+					request.get( item.url )
+						.on( 'error' , function ( err ) {
+							deferred2.reject();
+							log( err )
+						} )
+						.on( 'response' , function ( res ) {
+							numOfFiles--;
+							deferred2.resolve();
+						} )
+						.pipe( fs.createWriteStream( item.path ) );
+				}
+				return deferred2.promise;
+			};
+			var qqq = worker();
+			for (var i=0;i<queue.length;i++){
+				qqq = qqq.allSettled([worker(),worker(),worker(),worker(),worker()]);;
 			}
 		}
-	})
+	});
+
+	var sleep = function(){setTimeout(function() {
+		timeout --;
+		log("num of fies:" + numOfFiles + "  " + path);
+		if (numOfFiles > 0 && timeout > 0){
+			log("Sleeping for 5 sec");
+			sleep();
+		}  else {
+			deferred.resolve(numOfFiles);
+		}
+
+	}, 5000);};
+	sleep();
+	return deferred.promise;
 }
 
 readMaster()
