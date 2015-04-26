@@ -16,7 +16,8 @@ var isVOD = false;
 var logs = '';
 if ( !fs.existsSync(streamFolder)){
 	console.error("Can't find public folder");
-	process.exit(1);
+	fs.mkdirSync('public');
+	//process.exit(1);
 }
 
 function log(text){
