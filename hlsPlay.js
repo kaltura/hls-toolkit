@@ -230,6 +230,6 @@ app.use(function(err, req, res, next) {
 	res.send({message: err.message});
 });
 
-app.listen(6060);
+app.listen(process.env.PORT || 6060);
 
 module.exports = app;
