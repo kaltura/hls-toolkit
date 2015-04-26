@@ -1,1 +1,1 @@
-web: node hlsPlay
+web: node hlsPlay.js
