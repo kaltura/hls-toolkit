@@ -107,6 +107,10 @@ app.get('/:stream/play.m3u8', function(req, res, next) {
 
 });
 
+app.get('/crossdomain.xml'  ,function(req, res, next) {
+   res.send('<?xml version="1.0"?> <cross-domain-policy> <allow-access-from domain="*" /></cross-domain-policy>');
+});
+
 app.get('/:stream/bitrate_:rate.m3u8',function(req, res, next){
 	log(req.url);
 	var response = '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-TARGETDURATION:13\n#EXT-X-MEDIA-SEQUENCE:0\n';
@@ -231,6 +235,6 @@ app.use(function(err, req, res, next) {
 	res.send({message: err.message});
 });
 
-app.listen(process.env.PORT || 6060);
+app.listen(process.env.PORT || 8080);
 
 module.exports = app;
