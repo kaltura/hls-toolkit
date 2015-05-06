@@ -174,9 +174,8 @@ function monitorAndDownload(url,path){
 					var item = queue.pop();
 					request.get( {url:item.url,headers:
 					{"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/600.5.17 (KHTML, like Gecko) Version/8.0.5 Safari/600.5.17",
-						"X-Playback-Session-Id":"0686833B-021C-4366-BA33-02E082104571",
-						"Referer":"http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8",
-						"Host":"olive.fr.globecast.tv"}} )
+						"X-Playback-Session-Id":"0686833B-021C-4366-BA33-02E082104571"
+						}} )
 						.on( 'error' , function ( err ) {
 							deferred2.reject();
 							log( err )

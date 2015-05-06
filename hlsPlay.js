@@ -71,6 +71,14 @@ function scanForStreams(){
 					if ( bitrate.length > 1 ) {
 						bitrate = bitrate[1];
 						var tsList = {};
+						if (bitrate[0] == "audio"){
+							tsList.audio = true;
+							tsList.lang = bitrate;
+						}
+						if (bitrate[0] == "caption"){
+							tsList.caption = true;
+							tsList.lang = bitrate;
+						}
 						tsList.bitrate =bitrate;
 						tsList.count=100;
 						tsList.duration = 1000;
@@ -103,6 +111,14 @@ app.get('/:stream/play.m3u8', function(req, res, next) {
 	for (var i=0 ; i < masterFile.length; i++){
 		var currentLine = masterFile[i];
 		if (currentLine.indexOf('#') == 0){
+			var audioMatch = currentLine.match(/#EXT-X-MEDIA:TYPE=AUDIO.*LANGUAGE="(.*)",/);
+			if (audioMatch && audioMatch.length > 1) {
+				currentLine = currentLine.replace( /URI=".*"/ ,'URI="'+ '/' + streamName + '/audio_' + audioMatch[1] + '/playlist.m3u8' +'"');
+			}
+			var captionMatch = currentLine.match(/#EXT-X-MEDIA:TYPE=SUBTITLES.*LANGUAGE="(.*)",/);
+			if (captionMatch && captionMatch.length > 1) {
+				currentLine = currentLine.replace( /URI=".*"/ , 'URI="'+'/' + streamName + '/caption_' + captionMatch[1] + '/playlist.m3u8'+'"' );
+			}
 			response += currentLine +'\n';
 		} else {
 			var preLine = masterFile[i-1];
@@ -110,6 +126,8 @@ app.get('/:stream/play.m3u8', function(req, res, next) {
 			if (bwMatch && bwMatch.length >1) {
 				response += '/'+ streamName +'/bitRate_' + bwMatch[1] + '.m3u8\n';
 			}
+
+
 		}
 	}
 	res.contentType('application/vnd.apple.mpegurl');
@@ -134,8 +152,9 @@ app.get('/:stream/bitrate_:rate.m3u8',function(req, res, next){
 	}
 	var fileContent = fs.readFileSync(streamFolder + '/' +streamName + '/bitRate_'+bitRate+'/playlist.m3u8' , 'utf8');
 	var key = fileContent.match(/#EXT-X-KEY:METHOD=AES-128.*/ig);
-	if (key && key.length == 1);
-	response+=key[0] + "\n";
+	if (key && key.length == 1) {
+		response += key[0] + "\n";
+	}
 
 	var dateTime = fileContent.match(/#EXT-X-PROGRAM-DATE-TIME.*/ig);
 	if (dateTime && dateTime.length == 1)
