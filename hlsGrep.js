@@ -40,7 +40,7 @@ function parseMaster(){
 		var lines = data.split('\n');
 		for (var i=0;i<lines.length;i++){
 			var line = lines[i];
-			var bwMatch = line.match(/#EXT-.*BANDWIDTH=([0-9]*),/);
+			var bwMatch = line.match(/#EXT-.*BANDWIDTH=([0-9]*)/);
 			if (bwMatch && bwMatch.length > 1){
 				bw[bwMatch[1]] = lines[i+1];
 			}
