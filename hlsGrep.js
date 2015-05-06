@@ -6,8 +6,8 @@ var http = require('http');
 var q = require('q');
 var request = require('request');
 var arguments = process.argv.slice(2);
-var hlsStream = arguments[0] || 'http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8';
-var name=arguments[1] || 'ABC';
+var hlsStream = arguments[0] || 'http://www.nasa.gov/multimedia/nasatv/NTV-Public-IPS.m3u8';
+var name=arguments[1] || 'Nasa';
 var baseDir =  'public/' + name + 'Stream/';
 if ( !fs.existsSync('public')){
 	fs.mkdirSync( 'public' );

@@ -46,6 +46,11 @@
      <button type="button" class="btn btn-danger" ng-click="hlsManager.kill()">Kill capture procces</button>
     <button type=button" class="btn" ng-click="hlsManager.playVOD()">Play VOD</button>
     <button type=button" class="btn" ng-click="hlsManager.playLive()">Play Live</button>
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" id="latency_cb" ng-model="hlsManager.latencyOn" ng-change="hlsManager.changeLatency()">Latency On
+        </label>
+    </div>
     <table class="table table-hover" >
         <tr>
             <th>Stream Name</th>
