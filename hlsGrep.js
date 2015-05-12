@@ -6,8 +6,8 @@ var http = require('http');
 var q = require('q');
 var request = require('request');
 var arguments = process.argv.slice(2);
-var hlsStream = arguments[0] || 'http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8';
-var name=arguments[1] || 'ABC';
+var hlsStream = arguments[0] || 'http://www.nasa.gov/multimedia/nasatv/NTV-Public-IPS.m3u8';
+var name=arguments[1] || 'Nasa';
 var baseDir =  'public/' + name + 'Stream/';
 if ( !fs.existsSync('public')){
 	fs.mkdirSync( 'public' );
@@ -35,6 +35,8 @@ function readMaster(){
 function parseMaster(){
 	var defferred = q.defer();
 	var bw = {};
+	var audio ={};
+	var caption = {};
 	var readFile = fs.readFile(baseDir+ 'master.m3u8','utf8',function(err,data){
 		log(data);
 		var lines = data.split('\n');
@@ -44,15 +46,26 @@ function parseMaster(){
 			if (bwMatch && bwMatch.length > 1){
 				bw[bwMatch[1]] = lines[i+1];
 			}
+
+			var audioMatch = line.match(/#EXT-X-MEDIA:TYPE=AUDIO.*LANGUAGE="([a-zA-Z]*)",.*URI="(.*)"/);
+			if (audioMatch && audioMatch.length >1){
+				audio[audioMatch[1]] = audioMatch[2];
+			}
+
+			var captionMatch = line.match(/#EXT-X-MEDIA:TYPE=SUBTITLES.*LANGUAGE="([a-zA-Z]*)",.*URI="(.*)"/);
+			if (captionMatch && captionMatch.length >1){
+				caption[captionMatch[1]] = captionMatch[2];
+			}
+
 		}
-		defferred.resolve(bw);
+		defferred.resolve([bw,audio,caption]);
 
 	});
 	return defferred.promise;
 }
 
-function downloadSegments(bwObj){
-
+function downloadSegments(responseArray){
+	var bwObj = responseArray[0],audio = responseArray[1],caption= responseArray[2];
 	if ( !fs.existsSync(name + 'Stream')) {
 		fs.mkdirSync( name + 'Stream' );
 	}
@@ -66,6 +79,22 @@ function downloadSegments(bwObj){
 	   // monitorAndDownload(bwObj[i],path );
 	   // break;
     }
+	for (var i in audio){
+		var path = baseDir + 'audio_'+i +'/';
+		if ( !fs.existsSync(path)) {
+			fs.mkdirSync( path);
+		}
+		jobs.push({arg1:audio[i],arg2:path});
+	}
+
+	for (var i in caption){
+		var path = baseDir + 'caption_'+i +'/';
+		if ( !fs.existsSync(path)) {
+			fs.mkdirSync( path);
+		}
+		jobs.push({arg1:caption[i],arg2:path});
+	}
+
 	var x = jobs.pop();
 	var worker = function(){
 		x = jobs.pop();
@@ -98,31 +127,37 @@ function monitorAndDownload(url,path){
 			}
 			var tsHash = {};
 			var lines = body.split('\n');
+			var foundkey = false;
 			for (var i=0;i<lines.length;i++){
 
 				var line= lines[i];
 				var keyMatch = line.match(/#EXT-X-KEY:.*URI="(.*)"/);
-				if (keyMatch && keyMatch.length > 1){
-
-					request.get(url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]) ).on( 'error' , function ( err ) {
+				if (!foundkey &&keyMatch && keyMatch.length > 1){
+					var filename = "key.key";
+					if (keyMatch[1].indexOf("http") == -1) {
+						keyMatch[1] = url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]);
+					}
+					foundkey = true;
+					request.get(keyMatch[1] ).on( 'error' , function ( err ) {
 						log( err )
 					} )
-						.pipe( fs.createWriteStream( path +  keyMatch[1] ) );
+						.pipe( fs.createWriteStream( path + filename ) );
 				}
 
 				var tsLength = line.match(/#EXTINF:([0-9\.]*)/);
 				if (tsLength && tsLength.length>1){
 					passheader = true;
-					var fileName = lines[i+1].match(/([\w,\s-]+\.ts)/);
+					var fileName = lines[i+1].match(/(.*\..*)/);
 					if (fileName && fileName.length>1) {
 						if (!fs.existsSync(path + fileName[1])) {
 							fs.appendFileSync(path +'playlist.m3u8',line + "\n");
 							fs.appendFileSync(path +'playlist.m3u8',fileName[1] + "\n");
 							var tsUrl = lines[i+1];
 							if (tsUrl.indexOf("http") == -1){
-								tsUrl = url.replace(/([\w,\s-]+\.m3u8)/ig,tsUrl);
+								tsUrl = url.replace(/(\/[^\/]+.m3u8)/ig,"/"+tsUrl);
 							}
 							numOfFiles++;
+							log(tsUrl);
 							queue.push({url:tsUrl,path:path+fileName[1]});
 						}
 					}
@@ -142,7 +177,10 @@ function monitorAndDownload(url,path){
 
 				}         else {
 					var item = queue.pop();
-					request.get( item.url )
+					request.get( {url:item.url,headers:
+					{"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/600.5.17 (KHTML, like Gecko) Version/8.0.5 Safari/600.5.17",
+						"X-Playback-Session-Id":"0686833B-021C-4366-BA33-02E082104571"
+						}} )
 						.on( 'error' , function ( err ) {
 							deferred2.reject();
 							log( err )

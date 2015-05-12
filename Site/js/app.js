@@ -6,6 +6,7 @@ angular.module('hlsManager', [])
 		var hlsManager = this;
 		hlsManager.captureLogs=false;
 		hlsManager.progress = true;
+		hlsManager.latencyOn = false;
 		hlsManager.reset = function(){
 			$http.get('/reset' );
 		};
@@ -41,6 +42,9 @@ angular.module('hlsManager', [])
 		hlsManager.playVOD = function(){
 			$http.get('/playVOD') ;
 		};
+		hlsManager.changeLatency = function(){
+			$http.get('/latency/' + hlsManager.latencyOn.toString());
+		}
 		hlsManager.playLive = function(){
 			$http.get('/playLive') ;
 		};
