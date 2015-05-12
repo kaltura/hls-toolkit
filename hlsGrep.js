@@ -47,12 +47,12 @@ function parseMaster(){
 				bw[bwMatch[1]] = lines[i+1];
 			}
 
-			var audioMatch = line.match(/#EXT-X-MEDIA:TYPE=AUDIO.*LANGUAGE="(.*)".*URI="(.*)"/);
+			var audioMatch = line.match(/#EXT-X-MEDIA:TYPE=AUDIO.*LANGUAGE="([a-zA-Z]*)",.*URI="(.*)"/);
 			if (audioMatch && audioMatch.length >1){
 				audio[audioMatch[1]] = audioMatch[2];
 			}
 
-			var captionMatch = line.match(/#EXT-X-MEDIA:TYPE=SUBTITLES.*LANGUAGE="(.*)".*URI="(.*)"/);
+			var captionMatch = line.match(/#EXT-X-MEDIA:TYPE=SUBTITLES.*LANGUAGE="([a-zA-Z]*)",.*URI="(.*)"/);
 			if (captionMatch && captionMatch.length >1){
 				caption[captionMatch[1]] = captionMatch[2];
 			}
@@ -127,16 +127,21 @@ function monitorAndDownload(url,path){
 			}
 			var tsHash = {};
 			var lines = body.split('\n');
+			var foundkey = false;
 			for (var i=0;i<lines.length;i++){
 
 				var line= lines[i];
 				var keyMatch = line.match(/#EXT-X-KEY:.*URI="(.*)"/);
-				if (keyMatch && keyMatch.length > 1){
-
-					request.get(url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]) ).on( 'error' , function ( err ) {
+				if (!foundkey &&keyMatch && keyMatch.length > 1){
+					var filename = "key.key";
+					if (keyMatch[1].indexOf("http") == -1) {
+						keyMatch[1] = url.replace(/([\w,\s-]+\.m3u8)/ig,keyMatch[1]);
+					}
+					foundkey = true;
+					request.get(keyMatch[1] ).on( 'error' , function ( err ) {
 						log( err )
 					} )
-						.pipe( fs.createWriteStream( path +  keyMatch[1] ) );
+						.pipe( fs.createWriteStream( path + filename ) );
 				}
 
 				var tsLength = line.match(/#EXTINF:([0-9\.]*)/);
