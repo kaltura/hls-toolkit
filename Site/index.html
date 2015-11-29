@@ -46,15 +46,19 @@
      <button type="button" class="btn btn-danger" ng-click="hlsManager.kill()">Kill capture procces</button>
     <button type=button" class="btn" ng-click="hlsManager.playVOD()">Play VOD</button>
     <button type=button" class="btn" ng-click="hlsManager.playLive()">Play Live</button>
+    <button type=button" class="btn" ng-click="hlsManager.resetBitRates()">Reset BitRates</button>
+    <input type="text" ng-model="hlsManager.selectedBitRate"/>
     <table class="table table-hover" >
         <tr>
             <th>Stream Name</th>
             <th> URL</th>
+            <th> Actions</th>
             <th> Bitrates</th>
         </tr>
      <tr ng-repeat="stream in hlsManager.streams">
          <td> {{stream.name}} </td>
          <td> <a target="_blank" href="{{stream.url}}">{{stream.url}}</a></td>
+         <td>   <button type="button" class="btn" ng-click="hlsManager.disableBitrate(this)">Disable BitRate</button></td>
          <td> {{stream.numOfBitrate}}</td>
      </tr>
     </table>

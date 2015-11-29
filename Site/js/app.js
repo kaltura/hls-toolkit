@@ -44,6 +44,15 @@ angular.module('hlsManager', [])
 		hlsManager.playLive = function(){
 			$http.get('/playLive') ;
 		};
+		hlsManager.disableBitrate = function(stream){
+			var streamName = stream.stream.name;
+			var bitrate = this.selectedBitRate;
+			$http.get('/disableTrack/'+streamName+'/' + bitrate);
+		};
+		hlsManager.resetBitRates = function(stream){
+
+			$http.get('/resetDisableTrack');
+		};
 		var getStreams = function() {
 			$http.get( '/list' ).success( function ( data ) {
 				hlsManager.streams = data;

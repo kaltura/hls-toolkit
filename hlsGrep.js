@@ -7,7 +7,7 @@ var q = require('q');
 var request = require('request');
 var arguments = process.argv.slice(2);
 var hlsStream = arguments[0] || 'http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8';
-var name=arguments[1] || 'ABC';
+var name= arguments[1] || 'ABC';
 var baseDir =  'public/' + name + 'Stream/';
 if ( !fs.existsSync('public')){
 	fs.mkdirSync( 'public' );

@@ -14,6 +14,7 @@ var inProgress = false;
 var exec = null;
 var isVOD = false;
 var logs = '';
+var disabledRates = {};
 if ( !fs.existsSync(streamFolder)){
 	console.error("Can't find public folder");
 	fs.mkdirSync('public');
@@ -113,9 +114,18 @@ app.get('/crossdomain.xml'  ,function(req, res, next) {
 
 app.get('/:stream/bitrate_:rate.m3u8',function(req, res, next){
 	log(req.url);
+
 	var response = '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-TARGETDURATION:13\n#EXT-X-MEDIA-SEQUENCE:0\n';
 	var streamName =  req.params['stream'];
 	var bitRate = req.params['rate'];
+	if (disabledRates[streamName]){
+		for (var i=0; i<disabledRates[streamName].length ; i++){
+			if (disabledRates[streamName][i] === bitRate){
+				res.sendStatus(404);
+				return;
+			}
+		}
+	}
 	var segmentLength = 10;
 	if (!streamName && !bitRate && !streams[streamName]){
 		next();
@@ -222,6 +232,19 @@ app.get('/playLive', function(req,res,next){
 
 app.get('/playMode', function(req,res,next) {
 	res.send( isVOD );
+});
+
+app.get('/disableTrack/:name/:bitRate', function(req,res,next) {
+	var streamName = req.params["name"];
+	var bitRate =  req.params["bitRate"];
+	disabledRates[streamName] = disabledRates[streamName] || [];
+	disabledRates[streamName].push(bitRate);
+	res.send( true );
+
+});
+app.get('/resetDisableTrack', function(req,res,next) {
+	disabledRates = {};
+	res.send( true );
 });
 
 app.use(function(req, res, next) {
