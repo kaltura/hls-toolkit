@@ -15,7 +15,7 @@
     "apple"
   ],
   "dependencies": {
-    "express": "~4.9.x" ,
+    "express": "~4.17.2" ,
     "q":"~1.1.2",
     "request":"~2.53.0"
   },
