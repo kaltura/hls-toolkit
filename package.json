@@ -16,7 +16,7 @@
   ],
   "dependencies": {
     "express": "~4.9.x" ,
-    "q":"~1.1.2",
+    "q":"~1.5.1",
     "request":"~2.53.0"
   },
   "author": "Itay Kinnrot",
