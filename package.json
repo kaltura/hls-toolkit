@@ -17,7 +17,7 @@
   "dependencies": {
     "express": "~4.9.x" ,
     "q":"~1.1.2",
-    "request":"~2.53.0"
+    "request":"~2.88.2"
   },
   "author": "Itay Kinnrot",
   "license": "ISC",
